@@ -1,0 +1,17 @@
+
+DAYS = 95
+
+S_O_VALUES = [0.1, 0.2, 0.3]
+S_TOTAL = sum(S_O_VALUES)
+GRAIN_PARAMS = (1, 0.05, 150)
+CONVERSION_FACTORS = [0.023, 0.851, 1.0]
+INITIAL_LEAF_AREA = 0.1
+
+
+POPULATION_SIZE = 20
+CROSSOVER_RATE = 0.9
+MUTATION_RATE = 0.08
+ITERATIONS = 100
+CRPAR = 0.5  # Коэффициент преобразования PAR в фотосинтетическую продукцию
+LEAF_ANGLES = [30, 45, 60]  # углы листьев
+LIGHT_INTENSITY = 1000
