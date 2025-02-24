@@ -1,17 +1,15 @@
 import math
 from settings import  CRPAR, LIGHT_INTENSITY
 
+#Расчет поглощенной PAR на основе угла листа и интенсивности света
+
 def calculate_absorbed_PAR(leaf_area, leaf_angle, light_intensity):
-    """Расчет поглощенной PAR на основе угла листа и интенсивности света."""
-    # Упрощенная модель: поглощение зависит от косинуса угла падения света
     absorption_factor = math.cos(math.radians(leaf_angle))
     absorbed_PAR = leaf_area * light_intensity * absorption_factor * CRPAR
     return absorbed_PAR
 
 #Расчет фотосинтетической продукции
-def calculate_photosynthetic_production(absorbed_PAR, temperature=25, CO2=400):
-    """Модель LEAFC3 (упрощенная версия)."""
-    # Параметры модели из статьи (примерные значения)
+def calculate_photosynthetic_production(absorbed_PAR, temperature=25):
     alpha = 0.05  # Квантовая эффективность
     beta = 0.1     # Коэффициент дыхания
     photosynthesis = alpha * absorbed_PAR - beta * temperature
