@@ -1,5 +1,5 @@
 from population import genetic_algorithm
-from model import calculate_yield  # Импортируем функцию
+from model import calculate_yield
 from settings import *
 import math
 
@@ -8,8 +8,8 @@ if __name__ == "__main__":
 #
 #    yield_total, results = calculate_yield(
 #        days=DAYS,
-#        initial_biomass=SEED_MASS,  # Используем параметр из settings.py
-#        leaf_angle=best_plant.traits[1],  # Предполагаем, что угол листа - второй трейт
+#        initial_biomass=SEED_MASS,
+#        leaf_angle=best_plant.traits[1],
 #        grain_params=(FLOWERING_START_DAY, CAPSULE_MASS, GRAIN_FILLING_DURATION)
 #    )
 #
