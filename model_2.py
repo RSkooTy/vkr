@@ -46,7 +46,7 @@ def calculate_absorbed_PAR(leaf_area, leaf_angle, E_dir, E_dif):
         return 0.0
 
     num_leaves = len(leaf_angle)
-    area_per_leaf = leaf_area / num_leaves  # Средняя площадь на лист
+    area_per_leaf = leaf_area / num_leaves
     total_absorbed = 0.0
 
     for angle in leaf_angle:
@@ -99,7 +99,8 @@ def calculate_yield2(days, grain_params, initial_biomass, temperatures, latitude
 
     organs = {
         'seed': {'biomass': initial_biomass, 'size': 0.0},
-        'leaf': {'biomass': 0.0, 'size': 0.0, 'count': 0, 'scale': 1.0, 'angles': leaf_angles},        'stem': {'biomass': 0.0, 'height': 0.0, 'branches': 0, 'diameter': 0.0},
+        'leaf': {'biomass': 0.0, 'size': 0.0, 'count': 0, 'scale': 1.0, 'angles': leaf_angles},
+        'stem': {'biomass': 0.0, 'height': 0.0, 'branches': 0, 'diameter': 0.0},
         'grain': {'biomass': 0.0, 'capsules': []},
         'buds': [],
         'flowers': [],
@@ -171,9 +172,9 @@ def calculate_yield2(days, grain_params, initial_biomass, temperatures, latitude
         elif current_stage == 2:
 
             if random.random() < 0.5 and organs['leaf']['count'] < 85:
-                organs['leaf']['count'] = 12  # Фиксируем 12 листьев
+                organs['leaf']['count'] = 12
                 organs['leaf']['angles'].append(random.uniform(0, 90))
-                organs['leaf']['biomass'] = transfer * allocation_ratio  # Используем параметр распределения биомассы
+                organs['leaf']['biomass'] = transfer * allocation_ratio
                 organs['leaf']['size'] = organs['leaf']['biomass'] * CONVERSION_FACTORS['leaf']
                 organs['stem']['biomass'] = transfer * (1 - allocation_ratio)
                 organs['stem']['diameter'] += 0.02
