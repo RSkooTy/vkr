@@ -1,4 +1,4 @@
-import random
+import random, csv
 
 DAYS = 103
 
@@ -63,3 +63,18 @@ GRAIN_FILLING_DURATION = 40
 CAPSULE_MASS = 0.5
 
 SOLAR_CONSTANT = 1368
+
+def load_temperatures_from_csv(filename):
+    temperatures = []
+    with open(filename, 'r') as f:
+        reader = csv.reader(f)
+        next(reader)
+        for row in reader:
+            temp = float(row[-1].strip())
+            temperatures.append(temp)
+    return temperatures
+
+temperatures = load_temperatures_from_csv('/Users/vladroot/Desktop/диплом/pythonDiploms/filesMains/temperature_Torzhok.csv')
+
+#LEAF_ANGLES = random.randint(0, 90)
+LEAF_ANGLES = [38, 35, 33, 55, 60, 61, 66, 63, 69,70, 72, 77, 63, 66]
