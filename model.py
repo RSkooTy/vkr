@@ -1,6 +1,8 @@
-import math, random
+import math, random, numpy as np
 from settings import  CRPAR,  SEEDS_PER_CAPSULE, SOLAR_CONSTANT, CONVERSION_FACTORS, PP_PARAMS, STAGE_PARAMS, GROWTH_STAGES_BD
-#from plantgl.setup import *
+
+random.seed(42)
+np.random.seed(42)
 
 def calculate_solar_declination(day_of_year):
     return math.radians(23.45 * math.sin(2 * math.pi * (284 + day_of_year) / 365))
@@ -40,35 +42,30 @@ def calculate_ppfun(PP):
         return 1.0
     return 1 - PP_PARAMS['ppsen'] * (PP_PARAMS['CPP'] - PP) ** 2
 
-
 #Расчет поглощенной PAR на основе угла листа и интенсивности света
 def calculate_absorbed_PAR(leaf_area, leaf_angle, E_dir, E_dif):
     if not leaf_angle or leaf_area <= 0:
         return 0.0
 
     num_leaves = len(leaf_angle)
-    area_per_leaf = leaf_area / num_leaves  
+    area_per_leaf = leaf_area / num_leaves
     total_absorbed = 0.0
 
     for angle in leaf_angle:
         angle_rad = math.radians(angle)
-        angle_impact = math.cos(angle_rad) ** 2
-        absorption_factor = 2.0 * angle_impact
+        angle_impact = math.sin(angle_rad)
+        absorption_factor = angle_impact
         leaf_PAR = (E_dir + E_dif) * CRPAR
         total_absorbed += area_per_leaf * leaf_PAR * absorption_factor
 
     return total_absorbed
 
-
-def calculate_photosynthetic_production(absorbed_PAR):
+def calculate_photosynthetic_production(absorbed_PAR, photosynthetic_efficiency):
     if absorbed_PAR <= 0:
         return 0.0
-    epsilon = 0.023
+    epsilon = photosynthetic_efficiency
     P_t = absorbed_PAR * epsilon
-    P_t = min(P_t, 12.1)
-    P_t = max(0, P_t * random.uniform(0.90, 1))
-    print("P_t: ", P_t)
-    return round(P_t, 2)
+    return min(P_t, 12.1)
 
 #Расчет затрат на поддержание дыхания
 def calculate_maintenance_respiration(total_biomass):
@@ -82,7 +79,7 @@ def calculate_cap(CAP_prev, P_t, C_mr):
 def calculate_biomass_increment(S_o, S_total, CAP_t):
     return min(S_o, (S_o / S_total) * CAP_t)
 
-def calculate_yield(days, grain_params, initial_biomass, temperatures, latitude):
+def calculate_yield(days, grain_params, initial_biomass, temperatures, latitude, traits):
     CAP = 0
     yield_total = 0
     total_biomass = initial_biomass
@@ -92,6 +89,8 @@ def calculate_yield(days, grain_params, initial_biomass, temperatures, latitude)
     current_stage = 1
     BD_history = []
 
+    leaf_angles = [traits[1]] * 12
+
     t_grain_start, D_flower, t_grain_duration = grain_params
     t_grain_end = t_grain_start + t_grain_duration
 
@@ -99,7 +98,7 @@ def calculate_yield(days, grain_params, initial_biomass, temperatures, latitude)
 
     organs = {
         'seed': {'biomass': initial_biomass, 'size': 0.0},
-        'leaf': {'biomass': 0.0, 'size': 0.0, 'count': 0, 'scale': 1.0, 'angles': []},
+        'leaf': {'biomass': 0.0, 'size': 0.0, 'count': 0, 'scale': 1.0, 'angles': leaf_angles},
         'stem': {'biomass': 0.0, 'height': 0.0, 'branches': 0, 'diameter': 0.0},
         'grain': {'biomass': 0.0, 'capsules': []},
         'buds': [],
@@ -117,8 +116,12 @@ def calculate_yield(days, grain_params, initial_biomass, temperatures, latitude)
         'fruits': 0.0
     }
 
-    To = 16
-    Tc = 36
+    allocation_ratio = traits[0]
+    photosynthetic_efficiency = traits[2]
+    temp_tolerance = traits[3]
+
+    To = 16 + temp_tolerance
+    Tc = 36 - temp_tolerance
 
     for t in range(1, days + 1):
         previous_stage = current_stage
@@ -148,7 +151,6 @@ def calculate_yield(days, grain_params, initial_biomass, temperatures, latitude)
 
         new_stage = get_growth_stage_bd(sum_BD)
         if new_stage != current_stage:
-            print(f"Переход на стадию {new_stage} при BD={sum_BD:.1f}")
             current_stage = new_stage
             stage_params = STAGE_PARAMS[current_stage]
             Tb = stage_params['Tb']
@@ -169,11 +171,11 @@ def calculate_yield(days, grain_params, initial_biomass, temperatures, latitude)
         elif current_stage == 2:
 
             if random.random() < 0.5 and organs['leaf']['count'] < 85:
-                organs['leaf']['count'] += 1
+                organs['leaf']['count'] = 12
                 organs['leaf']['angles'].append(random.uniform(0, 90))
-                organs['leaf']['biomass'] += 0.3 * growth_coeff
+                organs['leaf']['biomass'] = transfer * allocation_ratio
                 organs['leaf']['size'] = organs['leaf']['biomass'] * CONVERSION_FACTORS['leaf']
-                organs['stem']['height'] += 0.5
+                organs['stem']['biomass'] = transfer * (1 - allocation_ratio)
                 organs['stem']['diameter'] += 0.02
                 organs['stem']['biomass'] += 0.2 * growth_coeff
             sink_strength.update({'leaf': 15.0, 'stem': 10.0, 'seed': 0.0})
@@ -181,8 +183,8 @@ def calculate_yield(days, grain_params, initial_biomass, temperatures, latitude)
 
         elif current_stage == 3:
 
-            organs['stem']['branches'] = random.randint(2, 4)
-            organs['buds'] = [{'biomass': 0.01, 'maturity': 0.0} for _ in range(organs['stem']['branches'])]
+            organs['stem']['branches'] = np.random.randint(2, 5)
+            organs['buds'] = [{'biomass': 0.01, 'maturity': 0.0} for _ in range(5)]
             sink_strength['buds'] = 8.0
             organs['stem']['height'] += 1.2 * growth_coeff
             organs['stem']['diameter'] += 0.03
@@ -243,8 +245,8 @@ def calculate_yield(days, grain_params, initial_biomass, temperatures, latitude)
                 organs['grain']['capsules'] = [
                     {
                         'seeds': SEEDS_PER_CAPSULE if f['pollinated'] else 0,
-                        'size': 0.1,
-                        'biomass': 0.1,
+                        'size': 0.001,
+                        'biomass': 0.0001,
                         'maturity': 0.0
                     } for f in organs['flowers'] if f['pollinated']
                 ]
@@ -275,7 +277,7 @@ def calculate_yield(days, grain_params, initial_biomass, temperatures, latitude)
         leaf_angle = organs['leaf']['angles']
 
         absorbed_PAR = calculate_absorbed_PAR(leaf_area, leaf_angle, E_dir, E_dif)
-        P_t = calculate_photosynthetic_production(absorbed_PAR)
+        P_t = calculate_photosynthetic_production(absorbed_PAR, photosynthetic_efficiency)
         C_mr = calculate_maintenance_respiration(total_biomass)
         CAP = max(0, calculate_cap(CAP, P_t, C_mr))
 
@@ -313,9 +315,9 @@ def calculate_yield(days, grain_params, initial_biomass, temperatures, latitude)
             D_grain_values.append(grain_alloc)
 
         yield_total = sum(
-            capsule['size'] * capsule['seeds'] * CONVERSION_FACTORS['grain']
+            capsule['biomass'] * capsule['seeds'] * CONVERSION_FACTORS['grain']
             for capsule in organs['grain']['capsules']
-            if capsule['maturity'] >= 1.0
+            if capsule['maturity'] >= 0.9
         )
 
         total_biomass = sum([
@@ -337,10 +339,10 @@ def calculate_yield(days, grain_params, initial_biomass, temperatures, latitude)
             round(yield_total, 2)
         ))
 
-        print(f"Day {t}: sum_BD = {sum_BD:.2f}, Stage = {current_stage}")
+        growth_time = days
+        for day_data in results:
+            if day_data[1] == 11:
+                growth_time = day_data[0]
+                break
 
-    return yield_total, results
-
-
-
-
+    return yield_total, results, growth_time

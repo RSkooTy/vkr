@@ -1,26 +1,5 @@
-# visualization.py
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.stats import gaussian_kde
-
-
-def plot_growth_dynamics(days, all_heights, real_height):
-    plt.figure(figsize=(15, 6))
-
-    for i, heights in enumerate(all_heights):
-        plt.plot(days, heights, alpha=0.5, linewidth=1.5,
-                 label=f'Симуляция {i + 1}' if i < 3 else None)
-
-    plt.axhline(y=real_height, color='#e74c3c', linestyle='--',
-                linewidth=2.5, label=f'Реальное значение ({real_height} см)')
-
-    plt.xlabel('Дни роста', fontsize=12)
-    plt.ylabel('Высота растения (см)', fontsize=12)
-    plt.title('Динамика роста растения', fontsize=14)
-    plt.legend(loc='lower right')
-    plt.grid(True, alpha=0.2)
-    plt.show()
-
 
 def plot_final_heights_comparison(final_heights, real_height):
     plt.figure(figsize=(10, 6))
@@ -54,26 +33,42 @@ def plot_final_heights_comparison(final_heights, real_height):
     plt.tight_layout()
     plt.show()
 
+def plot_yield_growth(results_before, results_after):
+    plt.figure(figsize=(12, 6))
 
-def plot_statistical_analysis(days, all_heights, real_height):
-    heights_matrix = np.array(all_heights)
-    mean_heights = np.mean(heights_matrix, axis=0)
-    std_heights = np.std(heights_matrix, axis=0)
-    median_heights = np.median(heights_matrix, axis=0)
+    def find_first_yield_day(results):
+        for day_data in results:
+            if day_data[6] > 0:
+                return day_data[0]
+        return 0
 
-    plt.figure(figsize=(18, 6))
+    start_day_before = find_first_yield_day(results_before)
+    start_day_after = find_first_yield_day(results_after)
 
-    plt.fill_between(days, mean_heights - std_heights, mean_heights + std_heights,
-                     color='#3498db', alpha=0.2)
-    plt.plot(days, mean_heights, color='#2980b9', linewidth=2,
-             label='Среднее значение')
-    plt.plot(days, median_heights, color='#e67e22', linestyle=':',
-             linewidth=2, label='Медиана')
-    plt.axhline(real_height, color='#e74c3c', linestyle='--',
-                linewidth=2, label='Эталон')
-    plt.title('Средняя динамика с отклонениями')
-    plt.grid(alpha=0.1)
-    plt.legend()
+    filtered_before = [d for d in results_before if d[0] >= start_day_before]
+    filtered_after = [d for d in results_after if d[0] >= start_day_after]
 
+    days_before = [d[0] - start_day_before + 1 for d in filtered_before]
+    yield_before = [d[6] for d in filtered_before]
+
+    days_after = [d[0] - start_day_after + 1 for d in filtered_after]
+    yield_after = [d[6] for d in filtered_after]
+
+    plt.plot(days_before, yield_before,
+             label='До оптимизации',
+             color='blue')
+
+    plt.plot(days_after, yield_after,
+             label='После оптимизации',
+             color='red')
+
+    plt.xlabel('Дни с начала роста урожайности', fontsize=12)
+    plt.ylabel('Урожайность (г)', fontsize=12)
+    plt.title('Динамика урожайности с момента её начала', fontsize=14)
+    plt.legend(fontsize=12)
+    plt.grid(alpha=0.2)
+    plt.xticks(np.arange(0, max(max(days_before), max(days_after)) + 1, 5))
     plt.tight_layout()
     plt.show()
+
+

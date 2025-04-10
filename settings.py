@@ -1,4 +1,6 @@
-import random, csv
+import random, csv, numpy as np
+random.seed(42)
+np.random.seed(42)
 
 DAYS = 103
 
@@ -48,16 +50,15 @@ GROWTH_STAGES_BD = {
 
 SEEDS_PER_CAPSULE = random.randint(5, 10)
 
-GRAIN_PARAMS = (1, 0.05, 150)
+GRAIN_PARAMS = (60, 10, 40)
 POPULATION_SIZE = 20
 CROSSOVER_RATE = 0.9
 MUTATION_RATE = 0.08
 ITERATIONS = 120
 
 CRPAR = 0.48
-LEAF_ANGLES = [30, 45, 60]
 
-SEED_MASS = 0.5
+SEED_MASS = 0.005
 FLOWERING_START_DAY = 75
 GRAIN_FILLING_DURATION = 40
 CAPSULE_MASS = 0.5
@@ -77,4 +78,3 @@ def load_temperatures_from_csv(filename):
 temperatures = load_temperatures_from_csv('/Users/vladroot/Desktop/диплом/pythonDiploms/filesMains/temperature_Torzhok.csv')
 
 #LEAF_ANGLES = random.randint(0, 90)
-LEAF_ANGLES = [38, 35, 33, 55, 60, 61, 66, 63, 69,70, 72, 77, 63, 66]
