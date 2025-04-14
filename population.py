@@ -1,3 +1,5 @@
+import numpy as np
+
 from model import calculate_yield
 from settings import *
 import hashlib
@@ -13,10 +15,14 @@ PARAM_RANGES = [
 class ParameterConfig:
     def __init__(self, snp_indices: List[int],
                  transform: Callable[[List[int]], float],
-                 value_range: Tuple[float, float]):
+                 value_range: Tuple[float, float],
+                 min_raw: float = None,
+                 max_raw: float = None):
         self.snp_indices = snp_indices
         self.transform = transform
         self.value_range = value_range
+        self.min_raw = min_raw
+        self.max_raw = max_raw
 
 class Plant:
     _hash_cache = {}
@@ -44,6 +50,12 @@ class Plant:
             snps = [self.decode_snp(i) for i in conf.snp_indices]
             raw = conf.transform(snps)
             trait = float(np.interp(raw, [0, self._max_value(conf)], conf.value_range))
+
+            if conf.min_raw is not None and conf.max_raw is not None:
+                trait = np.interp(raw, [conf.min_raw, conf.max_raw], conf.value_range)
+            else:
+                trait = np.interp(raw, [0, self._max_value(conf)], conf.value_range)
+
             traits.append(round(trait, 2))
 
         return traits
@@ -54,7 +66,7 @@ class Plant:
         if 'sum' in func_str:
             return 2 * len(conf.snp_indices)
         elif 'prod' in func_str:
-            return 3 ** len(conf.snp_indices)
+            return len(conf.snp_indices) ** 3
         elif 'max' in func_str:
             return 2
         elif 'len' in func_str or 'count' in func_str:
@@ -84,17 +96,35 @@ class Plant:
 def generate_configs() -> List[ParameterConfig]:
 
     configs = []
-    all_snps = list(range(200))
+    all_snps = list(range(400))
+
+    n_snps = 100
+    snp_indices = random.sample(all_snps, n_snps)
+    weights = np.random.randn(n_snps)
+
+    min_raw = sum(min(0 * w, 1 * w, 2 * w) for w in weights)
+    max_raw = sum(max(0 * w, 1 * w, 2 * w) for w in weights)
+
+    def dot_product_transform(snps):
+        return sum(s * w for s, w in zip(snps, weights))
+
+    configs.append(ParameterConfig(
+        snp_indices=snp_indices,
+        transform=dot_product_transform,
+        value_range=(0.5, 0.9),
+        min_raw=min_raw,
+        max_raw=max_raw
+    ))
+
     param_settings = [
-        (100, np.sum, (0.5, 0.9)),  # allocation_ratio
         (100, np.mean, (0, 180)),  # leaf_angle
-        (100, np.max, (0.1, 1.5)),  # photosynthetic_efficiency
+        (100, np.median, (0.1, 1.5)),  # photosynthetic_efficiency
         (100, np.median, (0, 5))  # temp_tolerance
     ]
 
     for n_snps, transform, value_range in param_settings:
         snp_indices = random.sample(all_snps, n_snps)
-        configs.append(ParameterConfig(snp_indices, transform, value_range))
+        configs.append(ParameterConfig(snp_indices=snp_indices, transform=transform, value_range=value_range))
 
     return configs
 
