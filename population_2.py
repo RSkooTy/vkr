@@ -1,16 +1,17 @@
 import numpy as np
-
 from model import calculate_yield
 from settings import *
 import hashlib
 from typing import List, Callable, Tuple
+import random
 
 PARAM_RANGES = [
-    (0.5, 0.9),   # allocation_ratio
-    (0, 180),       # leaf_angle
-    (0.1, 1.5),    # photosynthetic_efficiency
-    (0, 5)          # temp_tolerance
+    (0.5, 0.9),  # allocation_ratio
+    (0, 180),  # leaf_angle
+    (0.1, 1.5),  # photosynthetic_efficiency
+    (0, 5)  # temp_tolerance
 ]
+
 
 class ParameterConfig:
     def __init__(self, snp_indices: List[int],
@@ -24,7 +25,8 @@ class ParameterConfig:
         self.min_raw = min_raw
         self.max_raw = max_raw
 
-class Plant_1:
+
+class Plant_2:
     _hash_cache = {}
     _configs = None
 
@@ -37,45 +39,18 @@ class Plant_1:
         cls._configs = configs
 
     def decode_snp(self, idx: int) -> int:
-
-        bits = self.genome[idx * 2: (idx + 1) * 2]
-        value = bits[0] * 2 + bits[1]
-
-        return value if value < 3 else 2
+        return self.genome[idx]
 
     def decode_traits(self) -> List[float]:
-
         traits = []
         for conf in self._configs:
             snps = [self.decode_snp(i) for i in conf.snp_indices]
             raw = conf.transform(snps)
-            trait = float(np.interp(raw, [0, self._max_value(conf)], conf.value_range))
-
-            if conf.min_raw is not None and conf.max_raw is not None:
-                trait = np.interp(raw, [conf.min_raw, conf.max_raw], conf.value_range)
-            else:
-                trait = np.interp(raw, [0, self._max_value(conf)], conf.value_range)
-
+            trait = np.interp(raw, [conf.min_raw, conf.max_raw], conf.value_range)
             traits.append(round(trait, 2))
-
         return traits
 
-    def _max_value(self, conf: ParameterConfig) -> float:
-
-        func_str = str(conf.transform).lower()
-        if 'sum' in func_str:
-            return 2 * len(conf.snp_indices)
-        elif 'prod' in func_str:
-            return len(conf.snp_indices) ** 3
-        elif 'max' in func_str:
-            return 2
-        elif 'len' in func_str or 'count' in func_str:
-            return len(conf.snp_indices)
-
-        return 2
-
     def calculate_fitness(self, use_cache=False):
-
         params_hash = hashlib.md5(str(self.decode_traits()).encode()).hexdigest()
         if params_hash in self._hash_cache:
             return self._hash_cache[params_hash]
@@ -93,69 +68,52 @@ class Plant_1:
 
         return yield_result
 
-def generate_configs_1() -> List[ParameterConfig]:
 
+def generate_configs_2() -> List[ParameterConfig]:
     configs = []
-    all_snps = list(range(400))
+    all_snps = list(range(100))
 
-    n_snps = 100
-    snp_indices = random.sample(all_snps, n_snps)
-    weights = np.random.randn(n_snps)
+    for value_range in PARAM_RANGES:
+        weights = np.random.randn(100)
+        min_raw = sum(min(0 * w, 1 * w) for w in weights)
+        max_raw = sum(max(0 * w, 1 * w) for w in weights)
 
-    min_raw = sum(min(0 * w, 1 * w, 2 * w) for w in weights)
-    max_raw = sum(max(0 * w, 1 * w, 2 * w) for w in weights)
-
-    def dot_product_transform(snps):
-        return sum(s * w for s, w in zip(snps, weights))
-
-    configs.append(ParameterConfig(
-        snp_indices=snp_indices,
-        transform=dot_product_transform,
-        value_range=(0.5, 0.9),
-        min_raw=min_raw,
-        max_raw=max_raw
-    ))
-
-    param_settings = [
-        (100, np.mean, (0, 180)),  # leaf_angle
-        (100, np.median, (0.1, 1.5)),  # photosynthetic_efficiency
-        (100, np.median, (0, 5))  # temp_tolerance
-    ]
-
-    for n_snps, transform, value_range in param_settings:
-        snp_indices = random.sample(all_snps, n_snps)
-        configs.append(ParameterConfig(snp_indices=snp_indices, transform=transform, value_range=value_range))
+        configs.append(ParameterConfig(
+            snp_indices=all_snps,
+            transform=lambda snps, w=weights.copy(): sum(s * wi for s, wi in zip(snps, w)),
+            value_range=value_range,
+            min_raw=min_raw,
+            max_raw=max_raw
+        ))
 
     return configs
 
+
 def create_population(size):
-    return [Plant_1(np.random.randint(0, 2, 400*2)) for _ in range(size)]
+    return [Plant_2(np.random.randint(0, 2, 100)) for _ in range(size)]
 
-def crossover(p1: Plant_1, p2: Plant_1) -> Plant_1:
 
-    pts = sorted(random.sample(range(1, 800), 2))
+def crossover(p1: Plant_2, p2: Plant_2) -> Plant_2:
+    pts = sorted(random.sample(range(1, 100), 2))
     child_genome = np.concatenate([
         p1.genome[:pts[0]],
         p2.genome[pts[0]:pts[1]],
         p1.genome[pts[1]:]
     ])
+    return Plant_2(child_genome)
 
-    return Plant_1(child_genome)
 
-def mutate(ind: Plant_1, base_rate: float = MUTATION_RATE) -> Plant_1:
-
+def mutate(ind: Plant_2, base_rate: float = MUTATION_RATE) -> Plant_2:
     genome = ind.genome.copy()
-    for i in range(0, 800, 2):
-        mutation_prob = base_rate * (1 + i / 800)
+    for i in range(100):
+        mutation_prob = base_rate * (1 + i / 100)
         if random.random() < mutation_prob:
             genome[i] ^= 1
-            genome[i + 1] ^= 1
+    return Plant_2(genome)
 
-    return Plant_1(genome)
+def genetic_algorithm_optimized_2(configs: List[ParameterConfig]):
 
-def genetic_algorithm_optimized_1(configs: List[ParameterConfig]):
-
-    Plant_1.set_configs(configs)
+    Plant_2.set_configs(configs)
     population = create_population(POPULATION_SIZE)
     hash_table = {}
     elite = None
@@ -224,7 +182,7 @@ def genetic_algorithm_optimized_1(configs: List[ParameterConfig]):
 
     return max(population, key=lambda x: hash_table[tuple(map(float, x.decode_traits()))]), fitness_history, diversity_history, snp_history, snapshots
 
-def genetic_algorithm_basic_1(configs: List[ParameterConfig]):
+def genetic_algorithm_basic_2(configs: List[ParameterConfig]):
 
     population = create_population(POPULATION_SIZE)
     best_plant = None
